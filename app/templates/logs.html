@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Logs · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Operations</p>
+    <h1>Job logs</h1>
+    <p class="lede">All retained local worker events, Kaggle status polls, and downloaded Kaggle logs in chronological order.</p>
+  </div>
+  <span class="pill pending"><span class="dot"></span><span id="logs-live-state">Live polling</span></span>
+</section>
+
+<section class="panel">
+  <form id="logs-filters" class="log-filters">
+    <label class="field"><span>Status</span>
+      <select name="status"><option value="">All statuses</option>{% for value in JobStatus %}<option value="{{ value.value }}">{{ value.value }}</option>{% endfor %}</select>
+    </label>
+    <label class="field"><span>Job ID</span><input name="job" placeholder="UUID or fragment"></label>
+    <label class="field"><span>Log text</span><input name="text" placeholder="submission, running, failed…"></label>
+    <button class="btn" type="submit">Apply filters</button>
+  </form>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h2>Recent jobs</h2>
+    <p id="logs-job-count">{{ jobs|length }} jobs</p>
+  </header>
+  <div id="logs-jobs">
+    {% include "partials/job_table.html" %}
+  </div>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h2>Chronological stream</h2>
+    <div class="actions">
+      <label class="inline-toggle"><input id="aggregate-autoscroll" type="checkbox" checked> Auto-scroll</label>
+      <button class="btn ghost" id="aggregate-pause" type="button">Pause</button>
+      <button class="btn ghost" id="aggregate-copy" type="button">Copy</button>
+    </div>
+  </header>
+  <div class="aggregate-logs" id="aggregate-logs" aria-live="polite"></div>
+  <p class="hint">The official API safely exposes run status and completed output download. It does not provide supported live stdout streaming, so remote logs appear after download.</p>
+</section>
+{% endblock %}

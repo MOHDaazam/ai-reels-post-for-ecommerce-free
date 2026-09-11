@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% set p = business_profile | default(default_business_profile(), true) %}
+{% block title %}Studio · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero hero-compact">
+  <div>
+    <p class="eyebrow">{{ p.app_name }} · {{ p.city }}</p>
+    <h1>Queue a branded reel in two taps.</h1>
+    <p class="lede">Save your business once, pick a festival or hit Quick queue. One Hindi reel, three crossfaded scenes, logo and end card included.</p>
+  </div>
+  {% include "partials/health_strip.html" %}
+</section>
+
+{% if profile_saved %}
+<div class="alert ok" role="status">Business details saved.</div>
+{% endif %}
+{% if error %}
+<div class="alert error" role="alert">{{ error }}</div>
+{% endif %}
+
+<section class="panel quick-panel">
+  <header class="panel-head">
+    <div>
+      <h2>Your business</h2>
+      <p>Used for every quick and festival reel</p>
+    </div>
+    <form action="/studio/quick-queue" method="post" data-trending-aware>
+      <button class="btn primary" type="submit">Quick queue reel</button>
+    </form>
+  </header>
+  <form class="profile-form grid-3" action="/studio/profile" method="post" data-trending-aware>
+    <label class="field"><span>Business name</span><input name="vendor_name" maxlength="300" required value="{{ p.vendor_name }}"></label>
+    <label class="field"><span>Product / dish</span><input name="dish_name" maxlength="300" required value="{{ p.dish_name }}"></label>
+    <label class="field"><span>Offer line</span><input name="offer_text" maxlength="300" required value="{{ p.offer_text }}"></label>
+    <label class="field"><span>City</span><input name="city" maxlength="300" required value="{{ p.city }}"></label>
+    <label class="field"><span>Area</span><input name="area" maxlength="300" required value="{{ p.area }}"></label>
+    <label class="field"><span>CTA link</span><input name="cta_url" maxlength="300" required value="{{ p.cta_url }}"></label>
+    <label class="field"><span>App / brand name</span><input name="app_name" maxlength="300" value="{{ p.app_name }}"></label>
+    <label class="field"><span>Tagline</span><input name="brand_tagline" maxlength="300" value="{{ p.brand_tagline }}"></label>
+    <label class="field"><span>Contact</span><input name="contact" maxlength="300" value="{{ p.contact }}" placeholder="+91…"></label>
+    <label class="field"><span>Business type</span>
+      <select name="business_line">
+        {% for key, label in business_lines.items() %}
+        <option value="{{ key }}" {% if p.business_line == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field"><span>App kind (end card)</span><input name="app_kind" maxlength="300" value="{{ p.app_kind }}"></label>
+    <label class="field"><span>Platforms (end card)</span><input name="platforms" maxlength="300" value="{{ p.platforms }}"></label>
+    <div class="profile-actions">
+      <button class="btn" type="submit">Save business</button>
+      <p class="hint">Quick queue uses Hindi voice, credit saver, and three scenes.</p>
+    </div>
+  </form>
+</section>
+
+<section class="panel trending-panel" id="trending-audio-panel" data-default-trending="{{ p.trending_audio_id or default_trending_audio_id }}">
+  <header class="panel-head">
+    <div>
+      <h2>Trending Reels audio</h2>
+      <p>Hindi-first beds mixed under voice-over on every queued reel. Preview, pick once — Quick queue, festivals, and Advanced builder use it immediately.</p>
+    </div>
+  </header>
+  <div class="trending-audio-grid" role="radiogroup" aria-label="Trending Reels audio">
+    <label class="trending-audio-card none">
+      <input type="radio" name="trending_audio_id" value="" {% if not p.trending_audio_id %}checked{% endif %}>
+      <strong>No background music</strong>
+      <span>Voice-only reel</span>
+    </label>
+    {% for track in trending_tracks %}
+    <label class="trending-audio-card">
+      <input type="radio" name="trending_audio_id" value="{{ track.id }}" {% if p.trending_audio_id == track.id %}checked{% endif %}>
+      <strong>{{ track.title }}</strong>
+      <span class="tag">{{ track.reels_tag }}</span>
+      <span class="meta">{{ track.language | capitalize }} · {{ track.mood }}</span>
+      <audio controls preload="none" src="{{ track.preview_url }}"></audio>
+    </label>
+    {% endfor %}
+  </div>
+  <p class="hint">Add your own clips in <code>data/trending_audio/catalog.user.json</code> (HTTPS <code>source_url</code>). Uploaded music in Advanced builder overrides this pick.</p>
+</section>
+
+<section class="panel festival-panel">
+  <header class="panel-head">
+    <div>
+      <h2>Festival reels · Bareilly &amp; UP</h2>
+      <p>Upcoming dates — one tap queues a themed reel with your saved business</p>
+    </div>
+  </header>
+  {% if festival_offers %}
+  <div class="festival-grid">
+    {% for offer in festival_offers %}
+    <article class="festival-card">
+      <time datetime="{{ offer.when.isoformat() }}">{{ format_festival_date(offer.when) }}</time>
+      <strong>{{ offer.title_en }}</strong>
+      <em>{{ offer.title_hi }}</em>
+      <p>{{ offer.blurb }}</p>
+      <form action="/festivals/{{ offer.slug }}/queue" method="post" data-trending-aware>
+        <button class="btn primary" type="submit">Queue {{ offer.title_en }} reel</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No upcoming festivals in the catalog window. Use Quick queue or Advanced builder.</p>
+  {% endif %}
+</section>
+
+<section class="panel jobs-panel">
+  <header class="panel-head">
+    <h2>Recent jobs</h2>
+    <p>Opens on the job page when a run finishes</p>
+  </header>
+  {% include "partials/job_table.html" %}
+</section>
+
+<details class="panel advanced-panel">
+  <summary>Advanced builder — custom scenario, assets, and scene edits</summary>
+  <div class="campaign-layout">
+    <section class="panel builder">
+      <form class="job-form" id="campaign-form" action="/jobs" method="post" enctype="multipart/form-data" data-trending-aware>
+        <input type="hidden" name="campaign_json" id="campaign-json">
+        <div class="step-label"><b>1</b><span>Choose a scenario</span></div>
+        <div class="template-tabs" role="tablist">
+          <button type="button" class="tab active" data-template-tab="presets">Quick presets</button>
+          <button type="button" class="tab" data-template-tab="categories">All scenarios</button>
+        </div>
+        <div class="template-grid" data-template-panel="presets">
+          {% for template in campaign_presets %}
+          <label class="template-card">
+            <input type="radio" name="template_id" value="{{ template.id }}" data-defaults='{{ campaign_template_defaults[template.id]|tojson }}' {% if loop.first %}checked{% endif %}>
+            <span class="template-check">✓</span>
+            <strong>{{ template.title_en }}</strong>
+            <em>{{ template.title_hi }}</em>
+            <small>{{ template.description }}</small>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="template-grid hidden" data-template-panel="categories">
+          {% for template in campaign_categories %}
+          <label class="template-card">
+            <input type="radio" name="template_id" value="{{ template.id }}" data-defaults='{{ campaign_template_defaults[template.id]|tojson }}'>
+            <span class="template-check">✓</span>
+            <strong>{{ template.title_en }}</strong>
+            <em>{{ template.title_hi }}</em>
+            <small>{{ template.description }}</small>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div class="step-label"><b>2</b><span>Local details</span></div>
+        <div class="grid-3 campaign-fields">
+          <label class="field"><span>Vendor *</span><input data-variable="vendor_name" maxlength="300" required value="{{ p.vendor_name }}"></label>
+          <label class="field"><span>Dish *</span><input data-variable="dish_name" maxlength="300" required value="{{ p.dish_name }}"></label>
+          <label class="field"><span>Offer *</span><input data-variable="offer_text" maxlength="300" required value="{{ p.offer_text }}"></label>
+          <label class="field"><span>Area *</span><input data-variable="area" maxlength="300" required value="{{ p.area }}"></label>
+          <label class="field"><span>Contact</span><input data-variable="contact" maxlength="300" value="{{ p.contact }}"></label>
+          <label class="field"><span>CTA / link *</span><input data-variable="cta_url" maxlength="300" required value="{{ p.cta_url }}"></label>
+        </div>
+        <details class="advanced brand-defaults">
+          <summary>Brand defaults</summary>
+          <div class="grid-3">
+            <label class="field"><span>App name</span><input data-variable="app_name" maxlength="300" value="{{ p.app_name }}"></label>
+            <label class="field"><span>City</span><input data-variable="city" maxlength="300" value="{{ p.city }}"></label>
+            <label class="field"><span>Tagline</span><input data-variable="brand_tagline" maxlength="300" value="{{ p.brand_tagline }}"></label>
+          </div>
+        </details>
+
+        <div class="step-label"><b>3</b><span>Voice &amp; credits</span></div>
+        <div class="grid-3">
+          <label class="field"><span>Language</span><select name="language" id="campaign-language"><option value="hindi" selected>Hindi</option><option value="english">English</option><option value="bilingual">Bilingual</option></select></label>
+          <label class="field"><span>Voice</span><select name="voice">{% for item in voices %}<option value="{{ item }}" {% if item == 'female_hindi' %}selected{% endif %}>{{ item.replace('_', ' ')|title }}</option>{% endfor %}</select></label>
+          <label class="field"><span>Scenes</span><select name="campaign_size" id="campaign-size">{% for size in [3,4,5] %}<option value="{{ size }}">{{ size }}</option>{% endfor %}</select></label>
+        </div>
+        <fieldset class="strategy-grid">
+          <legend>GPU</legend>
+          <label class="choice"><input type="radio" name="strategy" value="credit_saver" checked><span><strong>Credit saver</strong><em>3 shots</em></span></label>
+          <label class="choice"><input type="radio" name="strategy" value="balanced"><span><strong>Balanced</strong><em>4 shots</em></span></label>
+          <label class="choice"><input type="radio" name="strategy" value="unique_visuals"><span><strong>Unique</strong><em>6 shots</em></span></label>
+        </fieldset>
+
+        <div class="step-label"><b>4</b><span>Assets</span></div>
+        <fieldset class="modes">
+          <legend>Visual source</legend>
+          <label class="choice"><input type="radio" name="mode" value="generate_still" checked><span><strong>Generate</strong><em>SDXL keyframes</em></span></label>
+          <label class="choice"><input type="radio" name="mode" value="uploaded_image"><span><strong>Upload photo</strong><em>Animate it</em></span></label>
+        </fieldset>
+        <div class="grid-2 asset-grid">
+          <label class="field file"><span>Hero image</span><input type="file" name="image" data-max-bytes="{{ max_image_bytes }}" accept="image/jpeg,image/png,image/webp"></label>
+          <label class="field file"><span>Music upload</span><input type="file" name="audio" data-max-bytes="{{ max_audio_bytes }}" accept="audio/*"><small>Overrides trending pick above</small></label>
+        </div>
+        <div class="grid-2 asset-grid">
+          <label class="field file"><span>Logo</span><input type="file" name="logo" data-max-bytes="{{ max_image_bytes }}" accept="image/*"></label>
+          <label class="field file"><span>Voice upload</span><input type="file" name="voice_upload" data-max-bytes="{{ max_audio_bytes }}" accept="audio/*"></label>
+        </div>
+
+        <div class="preview-head">
+          <div><div class="step-label"><b>5</b><span>Scene preview</span></div></div>
+          <button class="btn" id="refresh-plan" type="button">Refresh</button>
+        </div>
+        <div id="plan-error" class="alert error hidden" role="alert"></div>
+        <div id="reel-preview" class="reel-preview"><p class="empty">Open this section to edit scenes…</p></div>
+        <button class="btn primary queue-campaign" type="submit" disabled>Queue custom campaign</button>
+      </form>
+    </section>
+  </div>
+</details>
+{% endblock %}

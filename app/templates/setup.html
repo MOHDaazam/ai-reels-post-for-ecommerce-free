@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Setup · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Authentication & health</p>
+    <h1>Studio readiness</h1>
+    <p class="lede">Credentials stay on this machine. Tokens are never rendered in the browser.</p>
+  </div>
+</section>
+
+{% if setup_success %}
+<div class="alert success" role="status">{{ setup_success }}</div>
+{% endif %}
+{% if setup_error %}
+<div class="alert error" role="alert">{{ setup_error }}</div>
+{% endif %}
+
+<section class="panel">
+  <header class="panel-head">
+    <h2>Checks</h2>
+    <p>Generated {{ health.generated_at | localtime }}</p>
+  </header>
+  <ul class="checks">
+    {% for check in health.checks %}
+    <li class="check {{ check.level }}">
+      <span class="dot"></span>
+      <div>
+        <strong>{{ check.label }}</strong>
+        <p>{{ check.detail }}</p>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel setup-grid">
+  <header class="panel-head">
+    <h2>Save Kaggle credentials</h2>
+    <p>Stored locally with mode 0600</p>
+  </header>
+  <p class="hint">Choose one method. The secret is sent only to this localhost app, written under <code>data/secrets</code>, and is never returned, rendered, or logged.</p>
+  <form action="/setup/credentials" method="post" enctype="multipart/form-data" class="job-form secret-form">
+    <div class="grid-2">
+      <label class="field"><span>Kaggle username</span><input name="username" autocomplete="username"></label>
+      <label class="field"><span>Current API token</span><input name="api_token" type="password" autocomplete="new-password"></label>
+    </div>
+    <div class="separator"><span>or legacy kaggle.json</span></div>
+    <div class="grid-2">
+      <label class="field file"><span>Upload kaggle.json</span><input name="kaggle_json_file" type="file" accept=".json,application/json"></label>
+      <label class="field"><span>Paste kaggle.json</span><textarea name="kaggle_json_text" rows="4" autocomplete="off" spellcheck="false"></textarea></label>
+    </div>
+    <button class="btn primary" type="submit" data-busy-label="Saving and validating…">Save & validate</button>
+  </form>
+</section>
+
+<section class="panel">
+  <header class="panel-head">
+    <h2>Bootstrap / Connect</h2>
+    <p>Explicit network action</p>
+  </header>
+  <p class="hint">Validates the active credentials, creates or reuses the private dataset and kernel, and may run one no-op bootstrap kernel. This never runs on page load.</p>
+  {% if bootstrap_result %}
+  <dl class="meta">
+    <div><dt>Account</dt><dd>{{ bootstrap_result.username }}</dd></div>
+    <div><dt>Dataset</dt><dd><a href="https://www.kaggle.com/datasets/{{ bootstrap_result.dataset_ref }}">{{ bootstrap_result.dataset_ref }}</a></dd></div>
+    <div><dt>Kernel</dt><dd><a href="https://www.kaggle.com/code/{{ bootstrap_result.kernel_ref }}">{{ bootstrap_result.kernel_ref }}</a></dd></div>
+  </dl>
+  {% endif %}
+  <form action="/setup/bootstrap" method="post" class="secret-form">
+    <button class="btn primary" type="submit" data-busy-label="Connecting to Kaggle…">Bootstrap / Connect</button>
+    <span class="busy-message" role="status"></span>
+  </form>
+</section>
+{% endblock %}

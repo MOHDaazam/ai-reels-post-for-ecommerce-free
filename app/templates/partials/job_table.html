@@ -1,0 +1,29 @@
+{% if jobs %}
+<div class="table-wrap">
+  <table class="jobs">
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Prompt</th>
+        <th>Spec</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td><span class="badge {{ job.status }}">{{ job.status }}</span></td>
+        <td>
+          <a href="/jobs/{{ job.id }}">{{ job.prompt[:72] }}{% if job.prompt|length > 72 %}…{% endif %}</a>
+          <small>{% if job.campaign_size %}{{ job.campaign_size }} scenes · {{ job.language }} · {% endif %}{{ job.id }}</small>
+        </td>
+        <td>{{ job.width }}×{{ job.height }} · {{ job.num_frames }}f</td>
+        <td>{{ job.created_at | localtime }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No jobs yet. Queue one from the form.</p>
+{% endif %}

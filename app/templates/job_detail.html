@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Job {{ job.id[:8] }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Job {{ job.id }}</p>
+    <h1>{{ job.prompt[:80] }}{% if job.prompt|length > 80 %}…{% endif %}</h1>
+    <p class="lede">{{ job.width }}×{{ job.height }} · {{ job.num_frames }} frames · {% if campaign %}{{ job.campaign_size }}-scene reel{% else %}{{ job.mode.replace('_', ' ') }}{% endif %}</p>
+  </div>
+  <span class="badge {{ job.status }}" data-status="{{ job.status }}">{{ job.status }}</span>
+</section>
+
+<div class="layout">
+  <section class="panel">
+    <header class="panel-head">
+      <h2>Details</h2>
+      <div class="actions">
+        {% if job.status == 'queued' %}
+        <form action="/jobs/{{ job.id }}/cancel" method="post">
+          <button class="btn ghost" type="submit">Cancel queued</button>
+        </form>
+        {% elif job.status in ['submitting', 'running'] %}
+        <form action="/jobs/{{ job.id }}/cancel" method="post">
+          <button class="btn ghost" type="submit">Request cancellation</button>
+        </form>
+        <p class="hint">Kaggle's API cannot reliably stop a run. You must stop the kernel manually on Kaggle; the studio will keep monitoring it.</p>
+        {% elif job.status == 'cancel_requested' %}
+        <p class="hint">Cancellation is recorded locally. Stop the kernel manually on Kaggle; the studio will keep monitoring it.</p>
+        {% endif %}
+        {% if job.status in ['failed', 'canceled', 'completed'] %}
+        <form action="/jobs/{{ job.id }}/retry" method="post">
+          <button class="btn" type="submit">Retry</button>
+        </form>
+        {% endif %}
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Status</dt><dd id="job-status">{{ job.status }}</dd></div>
+      <div><dt>Mode</dt><dd>{{ job.mode.replace('_', ' ') }}</dd></div>
+      <div><dt>Seed</dt><dd>{{ job.seed if job.seed is not none else 'random' }}</dd></div>
+      <div><dt>Aspect</dt><dd>{{ job.aspect_ratio }}</dd></div>
+      <div><dt>Duration</dt><dd>{{ job.duration_preset }}</dd></div>
+      <div><dt>Image</dt><dd>{{ job.image_filename or '—' }}</dd></div>
+      <div><dt>Audio</dt><dd>{{ job.audio_filename or '—' }}{% if trending_audio_label %} · {{ trending_audio_label }}{% endif %}</dd></div>
+      {% if campaign %}
+      <div><dt>Language</dt><dd>{{ job.language }}</dd></div>
+      <div><dt>Voice</dt><dd>{{ job.voice.replace('_', ' ') }}</dd></div>
+      <div><dt>Voice-over file</dt><dd>{{ job.voice_filename or '—' }}</dd></div>
+      <div><dt>Strategy</dt><dd>{{ job.strategy.replace('_', ' ') }}</dd></div>
+      <div><dt>Logo</dt><dd>{{ job.logo_filename or '—' }}</dd></div>
+      {% endif %}
+      <div><dt>Created</dt><dd>{{ job.created_at | localtime }}</dd></div>
+      {% if estimate %}
+      <div><dt>Estimated finish</dt><dd>{{ estimate.finish_at | localtime }} · ~{{ estimate.minutes }} min</dd></div>
+      {% endif %}
+    </dl>
+    {% if estimate %}
+    <p class="hint">{{ estimate.basis|capitalize }}. Kaggle does not report progress or queue position, so this is an estimate.</p>
+    {% endif %}
+    <div class="field readonly">
+      <span>Prompt</span>
+      <p>{{ job.prompt }}</p>
+    </div>
+    {% if job.negative_prompt %}
+    <div class="field readonly">
+      <span>Negative prompt</span>
+      <p>{{ job.negative_prompt }}</p>
+    </div>
+    {% endif %}
+    {% if job.error_message %}
+    <div class="alert error">{{ job.error_message }}</div>
+    {% endif %}
+    {% if campaign %}
+    <p class="hint">Narration is voice-over only. People may appear in generated visuals, but no lip-sync is generated.</p>
+    <header class="panel-head tight"><h2>Planned scenes</h2><p>{{ campaign.cost_label }}</p></header>
+    <div class="planned-reels">
+      {% for reel in campaign.reels %}
+      <article class="planned-reel">
+        <header><span class="reel-number">{{ loop.index }}</span><div><strong>{{ reel.hook }}</strong><small>{{ reel.language }} · scene {{ loop.index }} of the reel</small></div></header>
+        <p>{{ reel.narration }}</p>
+        <div class="caption-chips">{% for caption in reel.captions %}<span>{{ caption }}</span>{% endfor %}</div>
+        <p class="reel-cta">{{ reel.cta }}</p>
+        <details><summary>Generation prompts</summary><p><b>Image:</b> {{ reel.flux_prompt }}</p><p><b>Motion:</b> {{ reel.ltx_motion_prompt }}</p></details>
+      </article>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <header class="panel-head">
+      <h2>Output</h2>
+      {% if campaign_zip_exists %}
+      <a class="btn primary" href="/jobs/{{ job.id }}/campaign.zip">Download campaign ZIP</a>
+      {% endif %}
+    </header>
+    {% if reel_outputs %}
+    <div class="output-grid">
+      {% for output in reel_outputs %}
+      {% set reel_number = (output.reel_index if output.reel_index is defined else output.index) + 1 %}
+      {% set reel_ref = output.reel_id|default(output.index) %}
+      <article class="output-slot">
+        <video class="preview" controls preload="metadata"{% if output.thumbnail_filename %} poster="/jobs/{{ job.id }}/reels/{{ reel_ref }}/thumbnail"{% endif %} src="/jobs/{{ job.id }}/reels/{{ reel_ref }}/preview"></video>
+        <strong>Reel {{ reel_number }}</strong>
+        <small>
+          {% if campaign and campaign.reels|length > output.index %}
+          {{ campaign.reels[output.index].language }} ·
+          {% endif %}
+          {% if output.shot_count %}{{ output.shot_count }} crossfaded shots{% else %}single shot{% endif %}
+          {% if output.narration_source %} · {{ output.narration_source.replace('_', ' ') }}{% endif %}
+        </small>
+        <div class="actions">
+          <a class="btn ghost" href="/jobs/{{ job.id }}/reels/{{ reel_ref }}/download">MP4</a>
+          {% if output.script_filename %}<a class="btn ghost" href="/jobs/{{ job.id }}/reels/{{ reel_ref }}/script">Script</a>{% endif %}
+          {% if output.srt_filename %}<a class="btn ghost" href="/jobs/{{ job.id }}/reels/{{ reel_ref }}/captions">Captions</a>{% endif %}
+          {% if output.thumbnail_filename %}<a class="btn ghost" href="/jobs/{{ job.id }}/reels/{{ reel_ref }}/thumbnail">Thumbnail</a>{% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% elif output_exists %}
+    <video class="preview" controls preload="metadata" src="/jobs/{{ job.id }}/preview"></video>
+    <div class="actions"><a class="btn primary" href="/jobs/{{ job.id }}/download">Download MP4</a></div>
+    {% else %}
+    <p class="empty">No MP4 yet. Outputs appear here after Kaggle finishes and the local download is verified.</p>
+    {% endif %}
+    {% if output_manifest and output_manifest.warnings %}
+    <div class="alert warning">
+      <strong>Render warnings</strong>
+      <ul>
+      {% for warning in output_manifest.warnings %}
+        <li>{{ warning.warning|default(warning) }}{% if warning.detail %} — {{ warning.detail }}{% endif %}</li>
+      {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <header class="panel-head tight">
+      <h2>Logs</h2>
+      <div class="actions log-actions">
+        <label class="inline-toggle"><input id="log-autoscroll" type="checkbox" checked> Auto-scroll</label>
+        <button class="btn ghost" id="log-pause" type="button">Pause</button>
+        <button class="btn ghost" id="log-copy" type="button">Copy</button>
+        <a class="btn ghost" href="/logs?job={{ job.id }}">All logs</a>
+        {% if job.kaggle_kernel_ref %}<a class="btn ghost" href="https://www.kaggle.com/code/{{ job.kaggle_kernel_ref }}" target="_blank" rel="noopener">Kaggle kernel</a>{% endif %}
+      </div>
+    </header>
+    <pre class="logs" id="job-logs" data-job-id="{{ job.id }}">{{ logs or 'No log lines yet.' }}</pre>
+    <p class="hint">Live lines show local submission and status polling. Full Kaggle logs are appended after the official API downloads outputs; running-log streaming is not exposed safely by the supported API.</p>
+  </section>
+</div>
+{% endblock %}

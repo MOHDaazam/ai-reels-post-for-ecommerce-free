@@ -1,0 +1,7 @@
+<div class="health-strip">
+  {% for check in health.checks %}
+  <a class="pill {{ check.level }}" href="/setup" title="{{ check.detail }}">
+    <span class="dot"></span>{{ check.label }}
+  </a>
+  {% endfor %}
+</div>

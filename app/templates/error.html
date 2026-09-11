@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ status_code }} · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>{{ status_code }}</h1>
+  <p class="lede">{{ error }}</p>
+  <a class="btn" href="/">Back to studio</a>
+</section>
+{% endblock %}
