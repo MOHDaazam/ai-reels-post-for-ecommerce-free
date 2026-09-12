@@ -39,17 +39,18 @@ Developers are invited to extend templates, languages, and integrations—**pull
 
 ## Sample reel
 
-Completed **biryani_craving** run (job `9e3a0ef8…`, six crossfaded shots, Hindi voice-over, end card — Aonla). Press play; the poster frame shows before playback.
+Completed **biryani_craving** run (job `9e3a0ef8…`, six crossfaded shots, Hindi voice-over, end card — Aonla). Thumbnail frame (from the delivered reel), then the full player.
 
 <p align="center">
-  <video
-    src="https://github.com/MOHDaazam/ai-reels-post-for-ecommerce-free/raw/main/docs/samples/sample-reel-biryani.mp4"
-    poster="https://github.com/MOHDaazam/ai-reels-post-for-ecommerce-free/raw/main/docs/samples/sample-reel-biryani-poster.jpg"
-    controls
-    playsinline
-    preload="metadata"
-    width="360"
-    style="max-width:100%;border-radius:14px;border:2px solid #e8b86d;background:#0d1118;">
+  <img
+    src="docs/samples/sample-reel-biryani-poster.jpg"
+    alt="Sample ecommerce reel thumbnail frame — biryani campaign"
+    width="360" />
+</p>
+
+<p align="center">
+  <video width="360" controls playsinline preload="metadata">
+    <source src="docs/samples/sample-reel-biryani.mp4" type="video/mp4" />
   </video>
 </p>
 
