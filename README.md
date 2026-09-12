@@ -39,18 +39,16 @@ Developers are invited to extend templates, languages, and integrations—**pull
 
 ## Sample reel
 
-Completed **biryani_craving** run (job `9e3a0ef8…`, six crossfaded shots, Hindi voice-over, end card — Aonla). Thumbnail frame (from the delivered reel), then the full player.
+Completed **biryani_craving** run (job `9e3a0ef8…`, six crossfaded shots, Hindi voice-over, end card — Aonla). GitHub only renders an inline player when the video is hosted on **`github.com/user-attachments`** (not repo paths); see [Attaching files](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files).
 
 <p align="center">
-  <img
-    src="docs/samples/sample-reel-biryani-poster.jpg"
-    alt="Sample ecommerce reel thumbnail frame — biryani campaign"
-    width="360" />
-</p>
-
-<p align="center">
-  <video width="360" controls playsinline preload="metadata">
-    <source src="docs/samples/sample-reel-biryani.mp4" type="video/mp4" />
+  <video
+    width="360"
+    controls
+    playsinline
+    preload="metadata"
+    poster="https://github.com/user-attachments/assets/afca81b7-8cbe-4189-b16e-b5587b566610"
+    src="https://github.com/user-attachments/assets/e482f15d-5140-4afb-92e2-dbd07820a195">
   </video>
 </p>
 
