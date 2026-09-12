@@ -37,18 +37,21 @@ Developers are invited to extend templates, languages, and integrations—**pull
 
 ---
 
-## Sample reel (playable)
+## Sample reel
 
-Real **completed** output from job `9e3a0ef8-c6c1-4e9d-939a-f78a01bfccc3` — **biryani_craving** template, six crossfaded shots, Hindi voice-over, end card and thumbnail (Aonla / *Cash and kadhi kitchen*). Same file you can preview locally at `http://127.0.0.1:8000/jobs/9e3a0ef8-c6c1-4e9d-939a-f78a01bfccc3` when your studio has that job on disk.
+Completed **biryani_craving** run (job `9e3a0ef8…`, six crossfaded shots, Hindi voice-over, end card — Aonla). Press play; the poster frame shows before playback.
 
 <p align="center">
-  <video src="docs/samples/sample-reel-biryani.mp4" controls width="320" poster="docs/samples/sample-reel-biryani-poster.jpg">
-    Your browser does not support embedded video.
-    <a href="docs/samples/sample-reel-biryani.mp4">Download the sample MP4</a>.
+  <video
+    src="https://github.com/MOHDaazam/ai-reels-post-for-ecommerce-free/raw/main/docs/samples/sample-reel-biryani.mp4"
+    poster="https://github.com/MOHDaazam/ai-reels-post-for-ecommerce-free/raw/main/docs/samples/sample-reel-biryani-poster.jpg"
+    controls
+    playsinline
+    preload="metadata"
+    width="360"
+    style="max-width:100%;border-radius:14px;border:2px solid #e8b86d;background:#0d1118;">
   </video>
 </p>
-
-[Download sample MP4](docs/samples/sample-reel-biryani.mp4) · [Poster frame](docs/samples/sample-reel-biryani-poster.jpg)
 
 ---
 
