@@ -20,3 +20,4 @@ docs/samples/sample-reel-biryani.mp4
 .kaggle/
 *.log
 .DS_Store
+.fastapicloud/
