@@ -14,6 +14,7 @@ dist/
 !.env.example
 kaggle.json
 data/
+docs/samples/sample-reel-biryani.mp4
 *.db
 *.sqlite3
 .kaggle/

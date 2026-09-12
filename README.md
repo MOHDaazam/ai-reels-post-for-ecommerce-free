@@ -112,6 +112,10 @@ flowchart TB
 
 ---
 
+## Deploy on FastAPI Cloud
+
+One-command hosting for the **studio UI** (GPU jobs still on Kaggle): configure secrets, bootstrap Kaggle once locally, then `fastapi deploy`. Full variable list and limits: **[docs/DEPLOY-FASTAPI-CLOUD.md](docs/DEPLOY-FASTAPI-CLOUD.md)**.
+
 ## Quick start (development)
 
 **Requirements:** Python 3.11+, Kaggle account with API access, local disk for `data/`.

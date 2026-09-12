@@ -1,0 +1,8 @@
+# Extra upload exclusions for FastAPI Cloud (see .gitignore too).
+tests/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+data/
+docs/samples/sample-reel-biryani.mp4
