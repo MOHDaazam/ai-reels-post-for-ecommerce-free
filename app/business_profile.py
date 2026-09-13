@@ -69,15 +69,33 @@ def load_profile_safe() -> dict[str, str]:
         return default_profile()
 
 
+def _profile_payload_from_store() -> dict[str, Any] | None:
+    from app.database import engine
+
+    if engine.dialect.name != "mysql":
+        return None
+    from app.studio_store import kv_get
+
+    raw = kv_get("business_profile")
+    if not raw:
+        return None
+    payload = json.loads(raw)
+    return payload if isinstance(payload, dict) else None
+
+
 def load_profile() -> dict[str, str]:
     merged = default_profile()
-    path = profile_path()
-    if not path.is_file():
-        return merged
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValidationError("Saved business profile is not valid JSON.") from exc
+    stored = _profile_payload_from_store()
+    if stored is not None:
+        payload = stored
+    else:
+        path = profile_path()
+        if not path.is_file():
+            return merged
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValidationError("Saved business profile is not valid JSON.") from exc
     if not isinstance(payload, dict):
         raise ValidationError("Saved business profile must be an object.")
     for key in PROFILE_KEYS:
@@ -103,18 +121,23 @@ def save_profile(values: Mapping[str, Any]) -> dict[str, str]:
     if merged.get("business_line") not in QUICK_TEMPLATE_BY_LINE:
         merged["business_line"] = "food_delivery"
     path = profile_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(
-            {
-                key: merged[key]
-                for key in PROFILE_KEYS
-                if merged.get(key) or key == "trending_audio_id"
-            },
-                   ensure_ascii=False,
-                   indent=2),
-        encoding="utf-8",
+    blob = json.dumps(
+        {
+            key: merged[key]
+            for key in PROFILE_KEYS
+            if merged.get(key) or key == "trending_audio_id"
+        },
+        ensure_ascii=False,
+        indent=2,
     )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(blob, encoding="utf-8")
+    from app.database import engine
+
+    if engine.dialect.name == "mysql":
+        from app.studio_store import kv_set
+
+        kv_set("business_profile", blob)
     return merged
 
 

@@ -54,6 +54,9 @@ def init_db() -> None:
     settings.jobs_dir.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     migrate_job_schema(engine)
+    from app.studio_store import ensure_studio_kv_table
+
+    ensure_studio_kv_table()
 
 
 def migrate_job_schema(target_engine: Engine) -> None:
