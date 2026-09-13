@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.config import Settings, _float_env, _int_env
+from app.config import Settings, _float_env, _int_env, _resolve_database_url
 from app.kaggle.client import (
     CredentialProbe,
     CredentialState,
@@ -35,6 +35,21 @@ def test_numeric_environment_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TEST_NUMBER", "not-a-number")
     with pytest.raises(ValueError):
         _int_env("TEST_NUMBER", 7)
+
+
+def test_resolve_database_url_uses_mysql_same_as_automatiom_napps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MYSQL_HOST", "srv.example.com")
+    monkeypatch.setenv("MYSQL_USER", "studio_user")
+    monkeypatch.setenv("MYSQL_PASSWORD", "secret@pass")
+    monkeypatch.setenv("MYSQL_DATABASE", "shared_db")
+    monkeypatch.setenv("MYSQL_PORT", "3306")
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///./data/studio.db")
+    url = _resolve_database_url()
+    assert url.startswith("mysql+pymysql://")
+    assert "studio_user" in url
+    assert "shared_db" in url
 
 
 def test_settings_derive_isolated_job_and_database_paths(tmp_path: Path) -> None:

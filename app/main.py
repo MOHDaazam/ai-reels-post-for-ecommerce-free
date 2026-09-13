@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app.basic_auth import basic_auth_middleware
 from app.business_profile import (
     BUSINESS_LINE_LABELS,
     campaign_variables,
@@ -51,6 +52,7 @@ from app.validation import (
     DURATION_PRESETS,
     ValidationError,
 )
+from app.studio_boot import BootstrapRuntime, bootstrap_runtime, set_bootstrap_runtime
 from app.worker import JobWorker, KaggleOrchestrator
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -74,24 +76,58 @@ def db_session():
 SessionDep = Annotated[Session, Depends(db_session)]
 
 
+async def _auto_bootstrap_kaggle() -> None:
+    if not settings.studio_auto_bootstrap:
+        return
+    from app.kaggle.client import CredentialState
+
+    set_bootstrap_runtime(
+        BootstrapRuntime(
+            status="pending",
+            detail="Creating or reusing private Kaggle dataset and kernel…",
+        )
+    )
+    creds = kaggle_service.credential_status()
+    if creds.state is not CredentialState.present:
+        set_bootstrap_runtime(
+            BootstrapRuntime(status="failed", detail=creds.detail or "Missing Kaggle credentials.")
+        )
+        return
+    try:
+        result = await asyncio.to_thread(kaggle_service.bootstrap)
+    except Exception as exc:
+        set_bootstrap_runtime(
+            BootstrapRuntime(status="failed", detail=_safe_error(exc))
+        )
+        return
+    set_bootstrap_runtime(
+        BootstrapRuntime(
+            status="ready",
+            detail=f"Private resources ready: {result.kernel_ref}",
+            result=result,
+        )
+    )
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
     settings.jobs_dir.mkdir(parents=True, exist_ok=True)
-    # Startup is deliberately offline: network credential validation and
-    # resource creation are explicit bootstrap operations.
     import asyncio
 
     task = asyncio.create_task(worker.run())
+    bootstrap_task = asyncio.create_task(_auto_bootstrap_kaggle())
     try:
         yield
     finally:
         worker.stop()
+        bootstrap_task.cancel()
         task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        for pending in (bootstrap_task, task):
+            try:
+                await pending
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(
@@ -101,6 +137,7 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
 )
+app.middleware("http")(basic_auth_middleware)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 

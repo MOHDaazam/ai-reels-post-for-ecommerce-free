@@ -1,6 +1,6 @@
 # Deploy on [FastAPI Cloud](https://fastapicloud.com)
 
-This studio is a normal FastAPI app (`app.main:app`) with a background job worker. GPU rendering still runs on **Kaggle**; FastAPI Cloud hosts the **UI + queue + SQLite**.
+This studio is a normal FastAPI app (`app.main:app`) with a background job worker. GPU rendering still runs on **Kaggle**; FastAPI Cloud hosts the **UI + queue**. Use **MySQL** on Cloud so job history survives redeploys (not ephemeral SQLite).
 
 Official refs: [Existing project](https://fastapicloud.com/docs/getting-started/existing-project/) · [Environment variables](https://fastapicloud.com/docs/builds-and-deployments/environment-variables/) · [Install dependencies](https://fastapicloud.com/docs/builds-and-deployments/install-dependencies/)
 
@@ -69,7 +69,8 @@ Legacy `~/.kaggle/kaggle.json` is **not** uploaded; env vars are the cloud path.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `DATA_DIR` | `./data` | Jobs, SQLite, secrets dir, profile JSON |
-| `DATABASE_URL` | `sqlite:///./data/studio.db` | Keep under `DATA_DIR` on Cloud |
+| `MYSQL_HOST` / `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE` | — | Same as **automatiom-napps**; auto-selected when `MYSQL_HOST` is set (creates table `jobs`). |
+| `DATABASE_URL` | `sqlite:///./data/studio.db` | Optional override; ignored when `MYSQL_HOST` is set unless this is a non-default URL. |
 | `APP_TIMEZONE` | machine TZ | e.g. `Asia/Kolkata` for IST labels |
 | `MAX_IMAGE_BYTES` | `15728640` | Upload limit (bytes) |
 | `MAX_AUDIO_BYTES` | `20971520` | Music/voice upload limit |
@@ -84,6 +85,10 @@ Do **not** set `APP_HOST` / `APP_PORT` on FastAPI Cloud unless their docs say so
 | `KAGGLE_KERNEL_SLUG` | `video-studio-runner` | Private GPU kernel |
 | `KAGGLE_RUNNER_DIR` | `./kaggle_runner` | Runner scripts (deployed with app) |
 | `STILL_MODEL` | `stabilityai/stable-diffusion-xl-base-1.0` | SDXL base on T4 |
+| `STUDIO_AUTO_BOOTSTRAP` | `0` | Set `1` on Cloud so the app creates/reuses the private dataset and kernel on startup (no localhost `/setup`). |
+| `STUDIO_BASIC_AUTH` | `0` | Set `1` to require HTTP Basic Auth on the whole app (UI + API). |
+| `STUDIO_BASIC_AUTH_USER` | `napps` | Basic-auth username when `STUDIO_BASIC_AUTH=1`. |
+| `STUDIO_BASIC_AUTH_PASSWORD` | `napps` | Basic-auth password (**use a secret** on Cloud). |
 
 ### Kaggle polling (optional tuning)
 
@@ -118,11 +123,13 @@ APP_TIMEZONE=Asia/Kolkata
 
 ---
 
-## 4. One-time Kaggle bootstrap (important)
+## 4. Kaggle bootstrap
 
-Saving credentials and **Bootstrap / Connect** on `/setup` are **localhost-only** in this app (403 from the public Cloud URL).
+**Hosted (recommended):** set `STUDIO_AUTO_BOOTSTRAP=1` with `KAGGLE_USERNAME` and `KAGGLE_API_TOKEN` in Cloud env. On each deploy/restart the app runs the same bootstrap as local **Bootstrap / Connect**. Check `/api/health` → **Kaggle bootstrap**.
 
-**Do this once on your laptop** with the same Kaggle account and slugs:
+**Local alternative:** saving credentials and **Bootstrap / Connect** on `/setup` are **localhost-only** (403 from the public Cloud URL).
+
+**One-time on laptop** (only if you do not use auto-bootstrap):
 
 1. Local `.env` with `KAGGLE_USERNAME` + `KAGGLE_API_TOKEN`
 2. Run `kaggle-video-studio` → http://127.0.0.1:8000/setup → **Bootstrap / Connect**
@@ -150,7 +157,7 @@ Your URL will look like: `https://<app>.fastapicloud.dev`
 | Topic | Behavior |
 | --- | --- |
 | **Setup UI** | View `/setup` works; **POST** credentials/bootstrap from the public site → **403** (by design). Use env + local bootstrap. |
-| **Disk** | Default SQLite + `data/jobs/` may be **ephemeral** on redeploy unless FastAPI Cloud gives you persistent storage—treat Cloud as a **queue UI**, not long-term job archive. |
+| **Database** | Run `./scripts/sync-cloud-mysql-env.sh` (reads `../automatiom-napps/.env`) to wire Hostinger MySQL. Job **files** under `data/jobs/` are still ephemeral on Cloud unless you add object storage later. |
 | **Security** | Public URL = anyone can queue jobs if they find the link. No built-in login. |
 | **Share tunnel** | `kaggle-video-studio share` is for local use only; not needed on Cloud. |
 | **Cost** | FastAPI Cloud hosting + **Kaggle GPU quota** (still $0 within Kaggle limits). |

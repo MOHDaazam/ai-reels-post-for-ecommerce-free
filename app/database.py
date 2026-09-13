@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine, event, inspect
+from urllib.parse import quote_plus
+
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -20,22 +22,27 @@ _ADDITIVE_JOB_COLUMNS = {
 }
 
 
-def _sqlite_url() -> str:
-    path = settings.db_path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return f"sqlite:///{path}"
+def _engine_kwargs(url: str) -> dict:
+    if url.startswith("sqlite:"):
+        return {"connect_args": {"check_same_thread": False}}
+    kwargs: dict = {"pool_pre_ping": True}
+    if url.startswith("mysql"):
+        kwargs["pool_recycle"] = 3600
+    return kwargs
 
 
-engine = create_engine(
-    _sqlite_url(),
-    connect_args={"check_same_thread": False},
-    future=True,
-)
+def create_studio_engine(url: str) -> Engine:
+    return create_engine(url, future=True, **_engine_kwargs(url))
+
+
+engine = create_studio_engine(settings.database_url)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 
 @event.listens_for(Engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, _connection_record) -> None:  # noqa: ANN001
+def _set_sqlite_pragma(dbapi_connection, connection_record) -> None:  # noqa: ANN001
+    if dbapi_connection.__class__.__module__ != "sqlite3.dbapi2":
+        return
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA journal_mode=WAL")
@@ -46,12 +53,12 @@ def init_db() -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.jobs_dir.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
-    migrate_sqlite_schema(engine)
+    migrate_job_schema(engine)
 
 
-def migrate_sqlite_schema(target_engine: Engine) -> None:
-    """Add nullable campaign columns without rebuilding existing SQLite tables."""
-    if target_engine.dialect.name != "sqlite" or not inspect(target_engine).has_table("jobs"):
+def migrate_job_schema(target_engine: Engine) -> None:
+    """Add nullable campaign columns without rebuilding existing job tables."""
+    if not inspect(target_engine).has_table("jobs"):
         return
     existing = {column["name"] for column in inspect(target_engine).get_columns("jobs")}
     missing = {
@@ -62,6 +69,27 @@ def migrate_sqlite_schema(target_engine: Engine) -> None:
     with target_engine.begin() as connection:
         for name, sql_type in missing.items():
             connection.exec_driver_sql(f"ALTER TABLE jobs ADD COLUMN {name} {sql_type}")
+
+
+def migrate_sqlite_schema(target_engine: Engine) -> None:
+    """Backward-compatible alias for tests."""
+    migrate_job_schema(target_engine)
+
+
+def mysql_url_from_env() -> str:
+    host = settings.mysql_host
+    user = settings.mysql_user
+    password = settings.mysql_password
+    database = settings.mysql_database
+    port = settings.mysql_port
+    if not all([host, user, password, database]):
+        raise RuntimeError(
+            "MySQL env incomplete. Set MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE "
+            "or set DATABASE_URL to a mysql+pymysql://… URL."
+        )
+    safe_user = quote_plus(user)
+    safe_password = quote_plus(password)
+    return f"mysql+pymysql://{safe_user}:{safe_password}@{host}:{port}/{database}"
 
 
 def get_session() -> Session:
